@@ -3,11 +3,6 @@
 
 #include "common.h"
 
-typedef struct InputBuffer {
-    char* buffer;
-    size_t buffer_len;
-    ssize_t input_len;
-} InputBuffer;
 
 InputBuffer* new_input_buf() {
     InputBuffer* buf = (InputBuffer*)malloc(sizeof(InputBuffer));
