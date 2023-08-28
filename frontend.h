@@ -53,19 +53,6 @@ void delete_table(Table* table) {
     free(table);
 }
 
-
-void serialize_row(Row* src, void* dst) {
-    memcpy(dst + id_offset, &(src->id), id_size);
-    memcpy(dst+ uname_offset, &(src->username), uname_size);
-    memcpy(dst+ email_offset, &(src->email), email_size);
-}
-
-void deserialize_row(void* src, Row* dst) {
-    memcpy(&(dst->id), src + id_offset, id_size);
-    memcpy(&(dst->username), src + uname_offset, uname_size);
-    memcpy(&(dst->email), src + email_offset, email_size);
-}
-
 void* row_slot(Table* table, int row_num) {
     int page_num = row_num / rows_per_page;
     void* page = table->pages[page_num];
@@ -79,8 +66,6 @@ void* row_slot(Table* table, int row_num) {
 
     return page + byte_offset;
 }
-
-
 
 MetaCommandResult parse_meta_command(InputBuffer* buf, Table* table) {
     if(strcmp(buf->buffer, ".exit") == 0) {
@@ -112,37 +97,4 @@ PrepareResult prepare_statement(InputBuffer* buf, Statement* statement) {
     }
 
     return PREPARE_UNRECOGNIZED_STATEMENT;
-}
-
-ExecuteResult execute_insert(Statement* statement, Table* table) {
-    if(table->num_rows >= max_rows) {
-        return EXECUTE_TABLE_FULL;
-    }
-
-    // Row* row = &(statement->row);
-    serialize_row(&(statement->row), row_slot(table, table->num_rows));
-    table->num_rows++;
-
-    return EXECUTE_SUCCESS;
-}
-
-ExecuteResult execute_select(Statement* statement, Table* table) {
-    Row row;
-    for(int i = 0; i < table->num_rows; i++) {
-        deserialize_row(row_slot(table, i), &row);
-        print_row(&row);
-    }
-
-    return EXECUTE_SUCCESS;
-}
-
-
-ExecuteResult execute_statement(Statement* statement, Table* table) {
-    switch (statement->type) {
-    case STATEMENT_INSERT :
-       return execute_insert(statement, table);
-    
-    case STATEMENT_SELECT :
-       return execute_select(statement, table);
-    }
 }
