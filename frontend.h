@@ -1,4 +1,5 @@
 #include "common.h"
+#include <fcntl.h>
 
 InputBuffer* new_input_buf() {
     InputBuffer* buf = (InputBuffer*)malloc(sizeof(InputBuffer));
@@ -34,13 +35,37 @@ void print_row(Row* row) {
     printf("\n(%d, %s, %s)\n", row->id, row->username, row->email);
 }
 
-Table* new_table() {
-    Table* table = (Table*)malloc(sizeof(Table));
-    table->num_rows = 0;
-    
-    for(int i = 0; i < MAX_PAGES; i++) {
-        table->pages[i] = NULL;
+Pager* pager_open(const char* filename) {
+    int fd = open(filename, O_RDWR | O_CREAT, S_IWUSR | S_IRUSR);
+    if(fd == -1) {
+        printf("\nUnable to open file\n");
+        exit(EXIT_FAILURE);
     }
+
+    off_t file_len = lseek(fd, 0, SEEK_END);
+    
+    Pager* pager = (Pager*)malloc(sizeof(Pager));
+    pager->fd = fd;
+    pager->file_len = file_len;
+
+    for(int i = 0; i < MAX_PAGES; i++) {
+        pager->pages[i] = NULL;
+    }
+
+    return pager;
+}
+
+void* get_page(Pager* pager, int page_num) {
+    
+}
+
+Table* db_open(const char* filename) {
+    Pager* pager = pager_open(filename);
+    int num_rows = pager->file_len / row_size;
+
+    Table* table = (Table*)malloc(sizeof(Table));
+    table->num_rows = num_rows;
+    table->pager = pager;
 
     return table;
 }
@@ -80,15 +105,41 @@ MetaCommandResult parse_meta_command(InputBuffer* buf, Table* table) {
     }
 }
 
+PrepareResult prepare_insert(InputBuffer* input_buffer, Statement* statement) {
+    statement->type = STATEMENT_INSERT;
+
+    char* keyword = strtok(input_buffer->buffer, " ");
+    char* id_string = strtok(NULL, " ");
+    char* username = strtok(NULL, " ");
+    char* email = strtok(NULL, " ");
+
+    if (id_string == NULL || username == NULL || email == NULL) {
+    return PREPARE_SYNTAX_ERROR;
+    }
+
+    int id = atoi(id_string);
+    if(id < 0) {
+    return PREPARE_NEGATIVE_ID;
+    }
+
+    if (strlen(username) > COL_UNAME_SIZE) {
+    return PREPARE_STRING_TOO_LONG;
+    }
+
+    if (strlen(email) > COL_EMAIL_SIZE) {
+    return PREPARE_STRING_TOO_LONG;
+    }
+
+    statement->row.id = id;
+    strcpy(statement->row.username, username);
+    strcpy(statement->row.email, email);
+
+    return PREPARE_SUCCESS;
+}
+
 PrepareResult prepare_statement(InputBuffer* buf, Statement* statement) {
     if(strncmp(buf->buffer, "insert", 6) == 0) {
-        statement->type = STATEMENT_INSERT;
-
-        int args = sscanf(buf->buffer, "insert %d %s %s", &(statement->row.id), statement->row.username, statement->row.email);
-
-        if(args < 3) return PREPARE_SYNTAX_ERROR;
-        
-        return PREPARE_SUCCESS;
+        return prepare_insert(buf, statement);
     }
 
     if(strcmp(buf->buffer, "select") == 0) {

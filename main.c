@@ -31,9 +31,16 @@ int main() {
             printf("\nSyntax Error: couldn't parse statement\n");
             continue;
 
+        case PREPARE_STRING_TOO_LONG :
+        printf("\nInput string too long\n");
+        continue;
+
+        case PREPARE_NEGATIVE_ID :
+        printf("\nID must be a positive number\n");
+        continue;
+        
         case PREPARE_UNRECOGNIZED_STATEMENT:
             printf("\nUnrecognized keyword at the beginning of '%s'\n", input_buf->buffer);
-            
             continue;
         }
 
